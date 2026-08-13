@@ -1,0 +1,15 @@
+# netlify.toml
+# Aucun build system requis — site statique + Netlify Functions.
+
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Timeout par défaut d'une fonction Netlify synchrone (Lambda) : 10s.
+# Netlify peut l'étendre jusqu'à 26s max sur ce type de fonction — c'est un
+# plafond de la plateforme, pas un réglage qu'on peut changer ici.
+# Voir la note "Diagnostic" fournie dans la réponse au sujet de ce plafond
+# si la génération des 3 images dépasse cette limite.
