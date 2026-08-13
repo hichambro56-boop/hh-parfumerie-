@@ -14,7 +14,7 @@
 
 const OPENAI_IMAGES_EDIT_URL = 'https://api.openai.com/v1/images/edits';
 const IMAGE_SIZE = '1024x1024'; // carré — plus rapide à générer que le portrait 1536
-const IMAGE_QUALITY = 'low'; // réduit fortement le temps de génération (contrainte: timeout Netlify ~26s)
+const IMAGE_QUALITY = 'medium'; // meilleur compromis vitesse/fidélité du texte que "low"
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
