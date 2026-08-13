@@ -997,6 +997,22 @@
     </svg>`;
   }
 
+  // Charge les produits ajoutés dynamiquement via la page add-product.html
+  // (stockés dans data/products.json) et les fusionne avec la liste fixe
+  // ci-dessus, avant que le rendu des cartes ne démarre.
+  async function loadDynamicProducts() {
+    try {
+      const res = await fetch('/data/products.json', { cache: 'no-store' });
+      if (res.ok) {
+        const dynamic = await res.json();
+        if (Array.isArray(dynamic)) perfumes.push(...dynamic);
+      }
+    } catch (e) {
+      console.warn('[index] Impossible de charger data/products.json', e);
+    }
+  }
+
+  loadDynamicProducts().finally(() => {
   perfumes.forEach((p, i) => {
     const card = document.createElement('article');
     const hasPhotos = p.photos && p.photos.length;
@@ -1076,6 +1092,7 @@
       });
     }
   });
+  }); // fin loadDynamicProducts().finally()
 
   // ---- Filters ----
   const chips = document.querySelectorAll('.chip');

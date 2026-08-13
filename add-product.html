@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H&amp;H PARFUMERIE — Ajouter un produit</title>
+<style>
+  :root{
+    --noir:#171717; --or:#C9A15F; --ivoire:#F3EAE0; --bordeaux:#6B1E2E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+    background:var(--ivoire); color:var(--noir);
+    margin:0; padding:2.5rem 1.5rem 4rem;
+  }
+  h1{font-size:1.5rem; margin-bottom:.3rem;}
+  .subtitle{color:#7a6f5d; margin-bottom:2rem; font-size:.92rem;}
+
+  #product-form-wrap{max-width:640px; margin:0 auto;}
+  .card{background:#fff; border:1px solid #E6DCC8; padding:1.8rem; border-radius:6px;}
+
+  .field{margin-bottom:1.2rem; display:flex; flex-direction:column; gap:.4rem;}
+  .field label{font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:#5b5041;}
+  .field input[type="text"],
+  .field textarea,
+  .field select{
+    padding:.7rem .8rem; border:1px solid #C9BBA5; border-radius:4px;
+    font-size:.95rem; font-family:inherit; background:#fff;
+  }
+  .field textarea{resize:vertical; min-height:70px;}
+  .field input[type="file"]{font-size:.9rem;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  #imagePreview{max-width:150px; margin-top:.6rem; border-radius:4px; border:1px solid #E6DCC8;}
+  .hidden{display:none !important;}
+
+  #generateBtn, #submitBtn{
+    width:100%; padding:.95rem; border:none; border-radius:4px;
+    background:var(--noir); color:var(--or); font-size:.95rem; font-weight:600;
+    cursor:pointer; transition:opacity .2s;
+  }
+  #generateBtn:disabled, #submitBtn:disabled{opacity:.55; cursor:not-allowed;}
+  #generateBtn:hover:not(:disabled), #submitBtn:hover:not(:disabled){opacity:.9;}
+  #submitBtn{background:var(--bordeaux); color:#fff; margin-top:1rem;}
+
+  #formStatus, #genStatus{margin-top:1rem; font-size:.88rem; padding:.8rem 1rem; border-radius:4px;}
+  .loading{background:#EFE9DC; color:#5b5041;}
+  .success{background:#E7EFE2; color:#3d5c34;}
+  .error{background:#F6E1DE; color:#8a2a1f;}
+
+  #visualsSection{margin-top:1.6rem;}
+  #visualsSection h2{font-size:1rem; margin-bottom:.9rem;}
+  #visualsGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:.8rem;}
+  .visual-card{background:#F3EAE0; border-radius:6px; overflow:hidden;}
+  .visual-card .slot-label{
+    padding:.4rem .5rem; font-size:.6rem; text-transform:uppercase; letter-spacing:.04em;
+    background:var(--noir); color:var(--or); font-weight:600; text-align:center;
+  }
+  .visual-card .img-wrap{
+    aspect-ratio:1/1; background:#0d0a07; display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  .visual-card img{width:100%; height:100%; object-fit:cover; display:none;}
+  .visual-card img.loaded{display:block;}
+  .spinner{
+    width:24px; height:24px; border:3px solid rgba(255,255,255,.25);
+    border-top-color:var(--or); border-radius:50%;
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{ to{transform:rotate(360deg);} }
+  .visual-error{padding:.4rem; font-size:.62rem; color:#8a2a1f; text-align:center;}
+</style>
+</head>
+<body>
+
+<h1>Ajouter un produit</h1>
+<p class="subtitle">Donne une seule photo — le système génère automatiquement 3 visuels, puis le produit est ajouté au site.</p>
+
+<div id="product-form-wrap">
+  <div class="card">
+    <form id="productForm">
+      <div class="field">
+        <label for="productImage">Photo du parfum (originale)</label>
+        <input type="file" id="productImage" accept="image/*" required>
+        <img id="imagePreview" class="hidden" alt="Aperçu du produit">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="productBrand">Marque</label>
+          <input type="text" id="productBrand" placeholder="ex. Yves Saint Laurent">
+        </div>
+        <div class="field">
+          <label for="productName">Nom du parfum</label>
+          <input type="text" id="productName" placeholder="ex. Y Le Parfum" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="productNotes">Notes olfactives</label>
+        <textarea id="productNotes" placeholder="ex. Bergamote · Lavande · Ambre · Patchouli"></textarea>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="productPrice">Prix actuel</label>
+          <input type="text" id="productPrice" placeholder="ex. 299 MAD" required>
+        </div>
+        <div class="field">
+          <label for="productOldPrice">Ancien prix (optionnel)</label>
+          <input type="text" id="productOldPrice" placeholder="ex. 900 MAD">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="productPromo">Offre (optionnel)</label>
+        <input type="text" id="productPromo" placeholder="ex. 2 pour 549 MAD">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="productCategory">Catégorie</label>
+          <select id="productCategory" required>
+            <option value="" disabled selected>Choisir…</option>
+            <option value="homme">Homme</option>
+            <option value="femme">Femme</option>
+            <option value="unisexe">Unisexe</option>
+            <option value="pack">Pack</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="productVolume">Volume (optionnel)</label>
+          <input type="text" id="productVolume" placeholder="ex. 100 ml">
+        </div>
+      </div>
+
+      <button type="button" id="generateBtn">✨ Générer les 3 visuels</button>
+    </form>
+
+    <p id="genStatus" class="hidden"></p>
+
+    <div id="visualsSection" class="hidden">
+      <h2>Visuels générés</h2>
+      <div id="visualsGrid">
+        <article class="visual-card" id="slotCard0">
+          <div class="slot-label">PACKAGING</div>
+          <div class="img-wrap"><div class="spinner" id="spinner0"></div><img id="resultImg0" alt="Packaging"></div>
+        </article>
+        <article class="visual-card" id="slotCard1">
+          <div class="slot-label">NOTES</div>
+          <div class="img-wrap"><div class="spinner" id="spinner1"></div><img id="resultImg1" alt="Notes"></div>
+        </article>
+        <article class="visual-card" id="slotCard2">
+          <div class="slot-label">LIFESTYLE</div>
+          <div class="img-wrap"><div class="spinner" id="spinner2"></div><img id="resultImg2" alt="Lifestyle"></div>
+        </article>
+      </div>
+
+      <button type="button" id="submitBtn" disabled>Ajouter le produit au site</button>
+      <p id="formStatus" class="hidden"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('productForm');
+  const imageInput = document.getElementById('productImage');
+  const imagePreview = document.getElementById('imagePreview');
+  const generateBtn = document.getElementById('generateBtn');
+  const genStatusEl = document.getElementById('genStatus');
+  const visualsSection = document.getElementById('visualsSection');
+  const submitBtn = document.getElementById('submitBtn');
+  const formStatusEl = document.getElementById('formStatus');
+
+  const MAX_DIMENSION = 700;
+  let resizedImageDataUri = null;
+  let generatedPhotos = [null, null, null];
+
+  function setStatus(el, message, kind) {
+    el.textContent = message;
+    el.className = kind || '';
+    el.classList.toggle('hidden', !message);
+  }
+
+  function resizeImageFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIMENSION) / width);
+              width = MAX_DIMENSION;
+            } else {
+              width = Math.round((width * MAX_DIMENSION) / height);
+              height = MAX_DIMENSION;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  imageInput.addEventListener('change', async () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    try {
+      resizedImageDataUri = await resizeImageFile(file);
+      imagePreview.src = resizedImageDataUri;
+      imagePreview.classList.remove('hidden');
+    } catch (e) {
+      console.error('[add-product] Erreur redimensionnement image', e);
+      setStatus(genStatusEl, 'Impossible de lire cette image, essaie un autre fichier.', 'error');
+    }
+  });
+
+  function resetVisuals() {
+    generatedPhotos = [null, null, null];
+    for (let i = 0; i < 3; i++) {
+      const img = document.getElementById('resultImg' + i);
+      const spinner = document.getElementById('spinner' + i);
+      const card = document.getElementById('slotCard' + i);
+      img.classList.remove('loaded');
+      img.removeAttribute('src');
+      spinner.style.display = '';
+      const err = card.querySelector('.visual-error');
+      if (err) err.remove();
+    }
+    submitBtn.disabled = true;
+  }
+
+  function fillVisualSuccess(index, imgSrc) {
+    const img = document.getElementById('resultImg' + index);
+    const spinner = document.getElementById('spinner' + index);
+    spinner.style.display = 'none';
+    img.src = imgSrc;
+    img.classList.add('loaded');
+    generatedPhotos[index] = imgSrc;
+    if (generatedPhotos.every(Boolean)) submitBtn.disabled = false;
+  }
+
+  function fillVisualError(index, message) {
+    const spinner = document.getElementById('spinner' + index);
+    const card = document.getElementById('slotCard' + index);
+    spinner.style.display = 'none';
+    const errEl = document.createElement('p');
+    errEl.className = 'visual-error';
+    errEl.textContent = 'Échec';
+    errEl.title = message;
+    card.appendChild(errEl);
+  }
+
+  async function callGenerateImage(prompt, slotLabel) {
+    const res = await fetch('/.netlify/functions/generate-campaign-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, image: resizedImageDataUri, slotLabel }),
+    });
+    let data;
+    try { data = await res.json(); }
+    catch (e) { throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`); }
+    if (!res.ok || !data.success) throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+    return data;
+  }
+
+  const MAX_ATTEMPTS = 3;
+  async function generateOneVisual(index, prompt, slotLabel) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const data = await callGenerateImage(prompt, slotLabel);
+        fillVisualSuccess(index, data.image);
+        return true;
+      } catch (err) {
+        console.error(`[add-product] Échec visuel ${index}, tentative ${attempt}/${MAX_ATTEMPTS}:`, err);
+        if (attempt === MAX_ATTEMPTS) {
+          fillVisualError(index, err.message);
+          return false;
+        }
+        await new Promise((r) => setTimeout(r, 800));
+      }
+    }
+    return false;
+  }
+
+  generateBtn.addEventListener('click', async () => {
+    if (!resizedImageDataUri) {
+      setStatus(genStatusEl, 'Choisis une photo du parfum avant de continuer.', 'error');
+      return;
+    }
+    if (!document.getElementById('productName').value.trim()) {
+      setStatus(genStatusEl, 'Renseigne au moins le nom du parfum avant de générer.', 'error');
+      return;
+    }
+
+    const product = {
+      brand: document.getElementById('productBrand').value.trim(),
+      name: document.getElementById('productName').value.trim(),
+      notes: document.getElementById('productNotes').value.trim(),
+      family: document.getElementById('productCategory').value,
+    };
+
+    generateBtn.disabled = true;
+    visualsSection.classList.remove('hidden');
+    resetVisuals();
+    setStatus(genStatusEl, 'Analyse du produit par Claude…', 'loading');
+
+    try {
+      const promptsRes = await fetch('/.netlify/functions/generate-campaign-prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product, image: resizedImageDataUri }),
+      });
+      let promptsData;
+      try { promptsData = await promptsRes.json(); }
+      catch (e) { throw new Error(`Réponse illisible du serveur (HTTP ${promptsRes.status}).`); }
+      if (!promptsRes.ok || !promptsData.success) {
+        throw new Error(promptsData.error || `Erreur serveur (HTTP ${promptsRes.status})`);
+      }
+
+      const prompts = promptsData.prompts;
+      const slots = promptsData.slots;
+      setStatus(genStatusEl, 'Génération des 3 visuels en cours… (20 à 40s)', 'loading');
+
+      const results = await Promise.all(prompts.map((p, i) => generateOneVisual(i, p, slots[i])));
+      const successCount = results.filter(Boolean).length;
+
+      if (successCount === 3) {
+        setStatus(genStatusEl, 'Les 3 visuels sont prêts — vérifie puis ajoute le produit.', 'success');
+      } else if (successCount > 0) {
+        setStatus(genStatusEl, `${successCount}/3 visuels générés — réessaie si besoin (bouton ci-dessus) avant d'ajouter.`, 'error');
+      } else {
+        setStatus(genStatusEl, 'Échec : aucun visuel généré. Réessaie.', 'error');
+      }
+    } catch (err) {
+      console.error('[add-product] Erreur génération:', err);
+      setStatus(genStatusEl, 'Échec : ' + err.message, 'error');
+    } finally {
+      generateBtn.disabled = false;
+    }
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    if (!generatedPhotos.every(Boolean)) return;
+
+    const payload = {
+      brand: document.getElementById('productBrand').value.trim(),
+      name: document.getElementById('productName').value.trim(),
+      notes: document.getElementById('productNotes').value.trim(),
+      price: document.getElementById('productPrice').value.trim(),
+      oldPrice: document.getElementById('productOldPrice').value.trim(),
+      promo: document.getElementById('productPromo').value.trim(),
+      family: document.getElementById('productCategory').value,
+      volume: document.getElementById('productVolume').value.trim(),
+      photos: generatedPhotos,
+    };
+
+    if (!payload.name || !payload.price || !payload.family) {
+      setStatus(formStatusEl, 'Nom, prix et catégorie sont requis.', 'error');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    setStatus(formStatusEl, 'Ajout du produit en cours…', 'loading');
+
+    try {
+      const res = await fetch('/.netlify/functions/add-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      let data;
+      try { data = await res.json(); }
+      catch (e) { throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`); }
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+
+      setStatus(formStatusEl, data.message || 'Produit ajouté avec succès.', 'success');
+      form.reset();
+      imagePreview.classList.add('hidden');
+      resizedImageDataUri = null;
+      visualsSection.classList.add('hidden');
+    } catch (err) {
+      console.error('[add-product] Erreur ajout:', err);
+      setStatus(formStatusEl, 'Échec : ' + err.message, 'error');
+      submitBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
