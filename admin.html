@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H&amp;H PARFUMERIE — Admin Campagnes</title>
+<style>
+  :root{
+    --noir:#171717; --or:#C9A15F; --ivoire:#F3EAE0; --bordeaux:#6B1E2E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+    background:var(--ivoire); color:var(--noir);
+    margin:0; padding:2.5rem 1.5rem 4rem;
+  }
+  h1{font-size:1.5rem; margin-bottom:.3rem;}
+  .subtitle{color:#7a6f5d; margin-bottom:2rem; font-size:.92rem;}
+
+  #campaign-generator{max-width:640px; margin:0 auto;}
+  .card{background:#fff; border:1px solid #E6DCC8; padding:1.8rem; border-radius:6px;}
+
+  .field{margin-bottom:1.2rem; display:flex; flex-direction:column; gap:.4rem;}
+  .field label{font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:#5b5041;}
+  .field input[type="text"],
+  .field select{
+    padding:.7rem .8rem; border:1px solid #C9BBA5; border-radius:4px;
+    font-size:.95rem; font-family:inherit; background:#fff;
+  }
+  .field input[type="file"]{font-size:.9rem;}
+  #imagePreview{max-width:150px; margin-top:.6rem; border-radius:4px; border:1px solid #E6DCC8;}
+  .hidden{display:none !important;}
+
+  #generateBtn{
+    width:100%; padding:.95rem; border:none; border-radius:4px;
+    background:var(--noir); color:var(--or); font-size:.95rem; font-weight:600;
+    cursor:pointer; transition:opacity .2s;
+  }
+  #generateBtn:disabled{opacity:.55; cursor:not-allowed;}
+  #generateBtn:hover:not(:disabled){opacity:.9;}
+
+  #campaignStatus{margin-top:1rem; font-size:.88rem; padding:.8rem 1rem; border-radius:4px;}
+  #campaignStatus.loading{background:#EFE9DC; color:#5b5041;}
+  #campaignStatus.success{background:#E7EFE2; color:#3d5c34;}
+  #campaignStatus.error{background:#F6E1DE; color:#8a2a1f;}
+
+  #campaignResultsSection{max-width:900px; margin:2.5rem auto 0;}
+  #campaignResultsSection h2{font-size:1.15rem; margin-bottom:1rem;}
+  #campaignResults{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1.2rem;
+  }
+  .result-card{background:#fff; border:1px solid #E6DCC8; border-radius:6px; overflow:hidden;}
+  .result-card .slot-label{
+    padding:.6rem .9rem; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em;
+    background:var(--noir); color:var(--or); font-weight:600;
+  }
+  .result-card .img-wrap{
+    aspect-ratio:4/5; background:#0d0a07; display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  .result-card img{width:100%; height:100%; object-fit:cover; display:none;}
+  .result-card img.loaded{display:block;}
+  .placeholder-spinner{
+    width:32px; height:32px; border:3px solid rgba(255,255,255,.25);
+    border-top-color:var(--or); border-radius:50%;
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{ to{transform:rotate(360deg);} }
+  .result-card .prompt-text{
+    padding:.7rem .9rem; font-size:.72rem; color:#7a6f5d; line-height:1.5;
+  }
+</style>
+</head>
+<body>
+
+<h1>Générateur de campagne</h1>
+<p class="subtitle">Photo du parfum → analyse Claude → 3 visuels générés par OpenAI.</p>
+
+<section id="campaign-generator">
+  <div class="card">
+    <form id="campaignForm">
+      <div class="field">
+        <label for="productImage">Photo du parfum</label>
+        <input type="file" id="productImage" accept="image/*" required>
+        <img id="imagePreview" class="hidden" alt="Aperçu du produit">
+      </div>
+
+      <div class="field">
+        <label for="productBrand">Marque</label>
+        <input type="text" id="productBrand" placeholder="ex. Yves Saint Laurent" required>
+      </div>
+
+      <div class="field">
+        <label for="productName">Nom du parfum</label>
+        <input type="text" id="productName" placeholder="ex. Y Le Parfum" required>
+      </div>
+
+      <div class="field">
+        <label for="productCategory">Catégorie</label>
+        <select id="productCategory" required>
+          <option value="" disabled selected>Choisir…</option>
+          <option value="homme">Homme</option>
+          <option value="femme">Femme</option>
+          <option value="unisexe">Unisexe</option>
+        </select>
+      </div>
+
+      <button type="submit" id="generateBtn">✨ Préparer la campagne</button>
+    </form>
+
+    <p id="campaignStatus" class="hidden"></p>
+  </div>
+</section>
+
+<section id="campaignResultsSection" class="hidden">
+  <h2>Campagne — 3 images séparées</h2>
+  <div id="campaignResults">
+    <article class="result-card" id="slotCard0">
+      <div class="slot-label">PERFUME + PACKAGING</div>
+      <div class="img-wrap">
+        <div class="placeholder-spinner" id="spinner0"></div>
+        <img id="resultImg0" alt="Perfume + packaging">
+      </div>
+      <p class="prompt-text" id="resultPrompt0"></p>
+    </article>
+
+    <article class="result-card" id="slotCard1">
+      <div class="slot-label">PERFUME + NOTES</div>
+      <div class="img-wrap">
+        <div class="placeholder-spinner" id="spinner1"></div>
+        <img id="resultImg1" alt="Perfume + notes">
+      </div>
+      <p class="prompt-text" id="resultPrompt1"></p>
+    </article>
+
+    <article class="result-card" id="slotCard2">
+      <div class="slot-label">SUMMER / BEACH / LIFESTYLE</div>
+      <div class="img-wrap">
+        <div class="placeholder-spinner" id="spinner2"></div>
+        <img id="resultImg2" alt="Summer / beach / lifestyle">
+      </div>
+      <p class="prompt-text" id="resultPrompt2"></p>
+    </article>
+  </div>
+</section>
+
+<script>
+(function () {
+  const form = document.getElementById('campaignForm');
+  const imageInput = document.getElementById('productImage');
+  const imagePreview = document.getElementById('imagePreview');
+  const statusEl = document.getElementById('campaignStatus');
+  const generateBtn = document.getElementById('generateBtn');
+  const resultsSection = document.getElementById('campaignResultsSection');
+
+  let imageDataUri = null;
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      imageDataUri = reader.result; // "data:image/...;base64,...."
+      imagePreview.src = imageDataUri;
+      imagePreview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function setStatus(message, kind) {
+    statusEl.textContent = message;
+    statusEl.className = kind || '';
+    statusEl.classList.toggle('hidden', !message);
+  }
+
+  function resetResultSlots() {
+    for (let i = 0; i < 3; i++) {
+      const img = document.getElementById('resultImg' + i);
+      const spinner = document.getElementById('spinner' + i);
+      const promptEl = document.getElementById('resultPrompt' + i);
+      img.classList.remove('loaded');
+      img.removeAttribute('src');
+      spinner.style.display = '';
+      promptEl.textContent = '';
+    }
+  }
+
+  function fillResultSlot(index, imgSrc, promptText) {
+    const img = document.getElementById('resultImg' + index);
+    const spinner = document.getElementById('spinner' + index);
+    const promptEl = document.getElementById('resultPrompt' + index);
+    spinner.style.display = 'none';
+    if (imgSrc) {
+      img.src = imgSrc;
+      img.classList.add('loaded');
+    }
+    promptEl.textContent = promptText || '';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!imageDataUri) {
+      setStatus('Choisis une photo du parfum avant de continuer.', 'error');
+      return;
+    }
+
+    const payload = {
+      product: {
+        brand: document.getElementById('productBrand').value.trim(),
+        name: document.getElementById('productName').value.trim(),
+        family: document.getElementById('productCategory').value,
+      },
+      image: imageDataUri,
+    };
+
+    generateBtn.disabled = true;
+    resultsSection.classList.remove('hidden');
+    resetResultSlots();
+    setStatus('Génération en cours… Claude analyse le produit, puis OpenAI génère les 3 visuels. Cela peut prendre 20 à 40 secondes.', 'loading');
+
+    try {
+      const res = await fetch('/.netlify/functions/generate-campaign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        // La fonction a renvoyé quelque chose qui n'est pas du JSON
+        // (souvent un timeout Netlify qui coupe la réponse en plein milieu).
+        throw new Error(
+          `Réponse illisible du serveur (HTTP ${res.status}). ` +
+          `La fonction a peut-être dépassé le temps limite Netlify pendant la génération des images.`
+        );
+      }
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+      }
+
+      data.images.forEach((imgSrc, i) => fillResultSlot(i, imgSrc, data.prompts[i]));
+
+      if (data.partialErrors && data.partialErrors.length) {
+        setStatus('Campagne partiellement générée — ' + data.partialErrors.join(' | '), 'error');
+      } else {
+        setStatus('Campagne prête — 3 images générées avec succès.', 'success');
+      }
+    } catch (err) {
+      console.error('[campaign-generator] Erreur:', err);
+      setStatus('Échec : ' + err.message, 'error');
+    } finally {
+      generateBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
