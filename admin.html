@@ -211,34 +211,57 @@
     card.appendChild(errEl);
   }
 
-  // Génère UNE image via generate-campaign-image, et remplit son slot dès
-  // qu'elle est prête (indépendamment des deux autres).
-  async function generateOneSlot(index, prompt, slotLabel) {
+  function updateSlotRetryNote(index, message) {
+    const promptEl = document.getElementById('resultPrompt' + index);
+    promptEl.textContent = message;
+  }
+
+  // Appelle generate-campaign-image UNE fois. Renvoie {ok, data|error}.
+  async function callGenerateImage(prompt, slotLabel) {
+    const res = await fetch('/.netlify/functions/generate-campaign-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, image: imageDataUri, slotLabel }),
+    });
+
+    let data;
     try {
-      const res = await fetch('/.netlify/functions/generate-campaign-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, image: imageDataUri, slotLabel }),
-      });
-
-      let data;
-      try {
-        data = await res.json();
-      } catch (parseErr) {
-        throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`);
-      }
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
-      }
-
-      fillResultSlotSuccess(index, data.image, prompt);
-      return true;
-    } catch (err) {
-      console.error(`[campaign-generator] Échec image ${index} (${slotLabel}):`, err);
-      fillResultSlotError(index, err.message);
-      return false;
+      data = await res.json();
+    } catch (parseErr) {
+      throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`);
     }
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+    }
+
+    return data;
+  }
+
+  // Génère UNE image, avec retry automatique (chaque tentative = nouvel
+  // appel de fonction, donc nouveau budget de temps Netlify complet).
+  // Remplit son slot dès qu'elle est prête, indépendamment des deux autres.
+  const MAX_ATTEMPTS = 3;
+  async function generateOneSlot(index, prompt, slotLabel) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        if (attempt > 1) {
+          updateSlotRetryNote(index, `Nouvelle tentative (${attempt}/${MAX_ATTEMPTS})…`);
+        }
+        const data = await callGenerateImage(prompt, slotLabel);
+        fillResultSlotSuccess(index, data.image, prompt);
+        return true;
+      } catch (err) {
+        console.error(`[campaign-generator] Échec image ${index} (${slotLabel}), tentative ${attempt}/${MAX_ATTEMPTS}:`, err);
+        if (attempt === MAX_ATTEMPTS) {
+          fillResultSlotError(index, err.message);
+          return false;
+        }
+        // petite pause avant de réessayer
+        await new Promise((r) => setTimeout(r, 800));
+      }
+    }
+    return false;
   }
 
   form.addEventListener('submit', async (e) => {
