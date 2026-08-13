@@ -66,6 +66,9 @@
     animation:spin 1s linear infinite;
   }
   @keyframes spin{ to{transform:rotate(360deg);} }
+  .slot-error{
+    padding:.7rem .9rem; font-size:.72rem; color:#8a2a1f; background:#F6E1DE; line-height:1.5;
+  }
   .result-card .prompt-text{
     padding:.7rem .9rem; font-size:.72rem; color:#7a6f5d; line-height:1.5;
   }
@@ -178,23 +181,64 @@
       const img = document.getElementById('resultImg' + i);
       const spinner = document.getElementById('spinner' + i);
       const promptEl = document.getElementById('resultPrompt' + i);
+      const wrap = img.closest('.img-wrap');
       img.classList.remove('loaded');
       img.removeAttribute('src');
       spinner.style.display = '';
       promptEl.textContent = '';
+      const existingErr = wrap.parentElement.querySelector('.slot-error');
+      if (existingErr) existingErr.remove();
     }
   }
 
-  function fillResultSlot(index, imgSrc, promptText) {
+  function fillResultSlotSuccess(index, imgSrc, promptText) {
     const img = document.getElementById('resultImg' + index);
     const spinner = document.getElementById('spinner' + index);
     const promptEl = document.getElementById('resultPrompt' + index);
     spinner.style.display = 'none';
-    if (imgSrc) {
-      img.src = imgSrc;
-      img.classList.add('loaded');
-    }
+    img.src = imgSrc;
+    img.classList.add('loaded');
     promptEl.textContent = promptText || '';
+  }
+
+  function fillResultSlotError(index, errorMessage) {
+    const spinner = document.getElementById('spinner' + index);
+    const card = document.getElementById('slotCard' + index);
+    spinner.style.display = 'none';
+    const errEl = document.createElement('p');
+    errEl.className = 'slot-error';
+    errEl.textContent = 'Échec : ' + errorMessage;
+    card.appendChild(errEl);
+  }
+
+  // Génère UNE image via generate-campaign-image, et remplit son slot dès
+  // qu'elle est prête (indépendamment des deux autres).
+  async function generateOneSlot(index, prompt, slotLabel) {
+    try {
+      const res = await fetch('/.netlify/functions/generate-campaign-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, image: imageDataUri, slotLabel }),
+      });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`);
+      }
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+      }
+
+      fillResultSlotSuccess(index, data.image, prompt);
+      return true;
+    } catch (err) {
+      console.error(`[campaign-generator] Échec image ${index} (${slotLabel}):`, err);
+      fillResultSlotError(index, err.message);
+      return false;
+    }
   }
 
   form.addEventListener('submit', async (e) => {
@@ -217,37 +261,46 @@
     generateBtn.disabled = true;
     resultsSection.classList.remove('hidden');
     resetResultSlots();
-    setStatus('Génération en cours… Claude analyse le produit, puis OpenAI génère les 3 visuels. Cela peut prendre 20 à 40 secondes.', 'loading');
+    setStatus('Analyse du produit par Claude…', 'loading');
 
     try {
-      const res = await fetch('/.netlify/functions/generate-campaign', {
+      // Étape 1 : récupérer les 3 prompts (rapide)
+      const promptsRes = await fetch('/.netlify/functions/generate-campaign-prompts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      let data;
+      let promptsData;
       try {
-        data = await res.json();
+        promptsData = await promptsRes.json();
       } catch (parseErr) {
-        // La fonction a renvoyé quelque chose qui n'est pas du JSON
-        // (souvent un timeout Netlify qui coupe la réponse en plein milieu).
-        throw new Error(
-          `Réponse illisible du serveur (HTTP ${res.status}). ` +
-          `La fonction a peut-être dépassé le temps limite Netlify pendant la génération des images.`
-        );
+        throw new Error(`Réponse illisible du serveur (HTTP ${promptsRes.status}).`);
       }
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+      if (!promptsRes.ok || !promptsData.success) {
+        throw new Error(promptsData.error || `Erreur serveur (HTTP ${promptsRes.status})`);
       }
 
-      data.images.forEach((imgSrc, i) => fillResultSlot(i, imgSrc, data.prompts[i]));
+      const prompts = promptsData.prompts;
+      const slots = promptsData.slots;
 
-      if (data.partialErrors && data.partialErrors.length) {
-        setStatus('Campagne partiellement générée — ' + data.partialErrors.join(' | '), 'error');
-      } else {
+      setStatus('Génération des 3 visuels en cours… (20 à 40s, chaque image apparaît dès qu\'elle est prête)', 'loading');
+
+      // Étape 2 : les 3 images en parallèle, chacune remplit son slot
+      // dès qu'elle est prête, indépendamment des deux autres.
+      const results = await Promise.all(
+        prompts.map((prompt, i) => generateOneSlot(i, prompt, slots[i]))
+      );
+
+      const successCount = results.filter(Boolean).length;
+
+      if (successCount === 3) {
         setStatus('Campagne prête — 3 images générées avec succès.', 'success');
+      } else if (successCount > 0) {
+        setStatus(`Campagne partiellement générée — ${successCount}/3 images réussies.`, 'error');
+      } else {
+        setStatus('Échec : aucune image n\'a pu être générée. Voir le détail sous chaque visuel.', 'error');
       }
     } catch (err) {
       console.error('[campaign-generator] Erreur:', err);
