@@ -13,7 +13,8 @@
 //   erreur -> { success: false, step: "openai"|"input", error: "..." }
 
 const OPENAI_IMAGES_EDIT_URL = 'https://api.openai.com/v1/images/edits';
-const IMAGE_SIZE = '1024x1536'; // portrait le plus proche d'un ratio 4:5 supporté par gpt-image-1
+const IMAGE_SIZE = '1024x1024'; // carré — plus rapide à générer que le portrait 1536
+const IMAGE_QUALITY = 'low'; // réduit fortement le temps de génération (contrainte: timeout Netlify ~26s)
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -85,6 +86,7 @@ exports.handler = async (event) => {
     form.append('image', new Blob([imageBuffer], { type: imageMimeType }), 'product.png');
     form.append('prompt', prompt);
     form.append('size', IMAGE_SIZE);
+    form.append('quality', IMAGE_QUALITY);
     form.append('n', '1');
 
     const response = await fetch(OPENAI_IMAGES_EDIT_URL, {
