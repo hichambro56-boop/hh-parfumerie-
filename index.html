@@ -1320,9 +1320,16 @@ src="https://www.facebook.com/tr?id=1350741580560420&ev=PageView&noscript=1"
         body: new URLSearchParams(fd).toString()
       });
 
-      if (!response.ok) throw new Error('Netlify Forms submission failed');
+    if (!response.ok) throw new Error('Netlify Forms submission failed');
 
-      orderThanksName.textContent = fd.get('fullname') || '';
+// Meta Pixel - Purchase
+if (typeof fbq === 'function') {
+    fbq('track', 'Purchase', {
+        currency: 'MAD'
+    });
+}
+
+orderThanksName.textContent = fd.get('fullname') || '';
       orderFormView.classList.add('hidden');
       orderThanksView.classList.remove('hidden');
       orderForm.reset();
