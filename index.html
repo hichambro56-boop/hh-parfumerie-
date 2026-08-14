@@ -758,7 +758,16 @@
         <span class="order-product-name" id="orderProductName">—</span>
         <span class="order-product-price" id="orderProductPrice">—</span>
       </div>
-      <form id="orderForm">
+      <form
+        id="orderForm"
+        name="order"
+        method="POST"
+        action="/"
+        data-netlify="true"
+        netlify-honeypot="bot-field"
+      >
+        <input type="hidden" name="form-name" value="order">
+        <input type="hidden" name="bot-field">
         <input type="hidden" id="orderProductInput" name="product">
         <div class="order-field">
           <label for="orderFullname">Nom complet</label>
@@ -1261,10 +1270,10 @@
   function openOrderModal(name, price){
     orderProductName.textContent = name;
     orderProductPrice.textContent = price + ' MAD';
+    orderForm.reset();
     orderProductInput.value = name;
     orderFormView.classList.remove('hidden');
     orderThanksView.classList.add('hidden');
-    orderForm.reset();
     orderOverlay.classList.add('open');
     orderModal.classList.add('open');
     orderModal.setAttribute('aria-hidden', 'false');
@@ -1277,12 +1286,36 @@
   orderClose.addEventListener('click', closeOrderModal);
   orderOverlay.addEventListener('click', closeOrderModal);
 
-  orderForm.addEventListener('submit', (e) => {
+  orderForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const submitBtn = orderForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
     const fd = new FormData(orderForm);
-    orderThanksName.textContent = fd.get('fullname') || '';
-    orderFormView.classList.add('hidden');
-    orderThanksView.classList.remove('hidden');
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Envoi en cours…';
+
+    try {
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(fd).toString()
+      });
+
+      if (!response.ok) throw new Error('Netlify Forms submission failed');
+
+      orderThanksName.textContent = fd.get('fullname') || '';
+      orderFormView.classList.add('hidden');
+      orderThanksView.classList.remove('hidden');
+      orderForm.reset();
+    } catch (error) {
+      console.error(error);
+      alert('Une erreur est survenue. Merci de réessayer ou de nous contacter sur WhatsApp.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
   });
 </script>
 
