@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H&amp;H PARFUMERIE — Fiche produit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --noir:#16110D;
+    --noir-2:#221A13;
+    --bordeaux:#6B1E2E;
+    --or:#C9A15F;
+    --or-clair:#E4C98E;
+    --ivoire:#F3EAE0;
+    --ivoire-2:#EAE0D2;
+    --sauge:#7C8863;
+    --transition: .35s cubic-bezier(.25,.8,.25,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--ivoire);
+    color:var(--noir-2);
+    font-family:'Jost',sans-serif;font-weight:300;
+    overflow-x:hidden;
+  }
+  h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:.02em;}
+  a{color:inherit;text-decoration:none;}
+  img{max-width:100%;display:block;}
+
+  /* ===== Nav minimal ===== */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:1.1rem 5%;
+    background:rgba(22,17,13,.96);backdrop-filter:blur(6px);
+  }
+  .logo{font-family:'Cormorant Garamond',serif;font-size:1.25rem;letter-spacing:.15em;color:var(--ivoire);}
+  .logo span{color:var(--or);}
+  .back-link{
+    color:var(--ivoire);font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;
+    display:flex;align-items:center;gap:.5rem;
+  }
+  .back-link:hover{color:var(--or-clair);}
+
+  /* ===== Page produit ===== */
+  #productWrap{
+    max-width:1080px;margin:0 auto;
+    padding:3rem 6% 5rem;
+    display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;
+    align-items:start;
+  }
+  @media (max-width:800px){
+    #productWrap{grid-template-columns:1fr;padding:2rem 6% 4rem;gap:2rem;}
+  }
+
+  .product-gallery{position:relative;}
+  .product-photo{
+    width:100%;aspect-ratio:3/4;overflow:hidden;position:relative;
+    background:#0d0a07;border:1px solid rgba(201,161,95,.4);
+    box-shadow:0 24px 50px -18px rgba(20,14,9,.4), inset 0 0 60px rgba(0,0,0,.22);
+  }
+  .product-photo::before{
+    content:'';position:absolute;inset:6px;border:1px solid rgba(228,201,142,.28);z-index:2;pointer-events:none;
+  }
+  .product-photo img{
+    width:100%;height:100%;object-fit:cover;object-position:center 20%;
+    position:absolute;inset:0;opacity:0;transition:opacity .8s ease;
+  }
+  .product-photo img.active{opacity:1;z-index:1;}
+  .product-dots{
+    position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);
+    display:flex;gap:.5rem;z-index:3;
+    padding:.35rem .6rem;border-radius:999px;background:rgba(13,10,7,.4);
+  }
+  .product-dots span{
+    width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);cursor:pointer;
+    transition:all var(--transition);
+  }
+  .product-dots span.active{background:var(--or-clair);width:16px;border-radius:3px;}
+
+  .product-info .eyebrow{
+    font-size:.72rem;text-transform:uppercase;letter-spacing:.25em;color:var(--bordeaux);margin-bottom:.7rem;
+    display:block;
+  }
+  .product-info h1{font-size:clamp(1.9rem,3.5vw,2.6rem);margin-bottom:1rem;line-height:1.1;}
+  .product-info .notes{
+    color:#5b5041;line-height:1.85;font-size:.98rem;margin-bottom:1.6rem;
+  }
+  .price-block{margin-bottom:2rem;}
+  .price-block .price{font-family:'Cormorant Garamond',serif;font-size:2rem;color:var(--noir-2);}
+  .price-block .old-price{
+    font-size:1rem;color:#a89a84;text-decoration:line-through;margin-right:.6rem;
+  }
+  .price-block .promo{font-size:.85rem;color:var(--bordeaux);margin-top:.3rem;}
+
+  #buyBtn{
+    padding:1.05rem 2.4rem;border:none;border-radius:2px;
+    background:var(--noir);color:var(--or);
+    font-size:.85rem;text-transform:uppercase;letter-spacing:.15em;font-weight:600;
+    cursor:pointer;transition:opacity .2s;
+  }
+  #buyBtn:hover{opacity:.88;}
+
+  .empty-state{
+    max-width:560px;margin:5rem auto;text-align:center;padding:0 6%;
+  }
+  .empty-state h2{font-size:1.6rem;margin-bottom:1rem;}
+  .empty-state p{color:#5b5041;margin-bottom:2rem;line-height:1.7;}
+  .empty-state a{
+    display:inline-block;padding:.9rem 2rem;border:1px solid var(--noir);
+    text-transform:uppercase;letter-spacing:.15em;font-size:.78rem;
+  }
+  .empty-state a:hover{background:var(--noir);color:var(--or);}
+
+  .hidden{display:none !important;}
+
+  /* ===== Order modal (identique à index.html) ===== */
+  .order-overlay{
+    position:fixed;inset:0;background:rgba(22,17,13,.55);
+    opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:900;
+  }
+  .order-overlay.open{opacity:1;pointer-events:auto;}
+  .order-modal{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);
+    width:min(92vw,420px);max-height:88vh;overflow-y:auto;
+    background:var(--ivoire);box-shadow:0 25px 60px rgba(0,0,0,.35);
+    z-index:901;opacity:0;pointer-events:none;
+    transition:opacity .35s ease, transform .35s ease;border-radius:3px;
+  }
+  .order-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%);}
+  .order-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:1.3rem 1.5rem;border-bottom:1px solid #E6DCC8;
+  }
+  .order-header h3{font-size:1.2rem;}
+  .order-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--noir-2);line-height:1;}
+  .order-body{padding:1.4rem 1.6rem 1.7rem;}
+  .order-product{
+    display:flex;justify-content:space-between;align-items:baseline;
+    background:#F3EAE0;padding:.9rem 1.1rem;margin-bottom:1.3rem;border-left:3px solid var(--or);
+  }
+  .order-product-name{font-size:.88rem;color:var(--noir-2);}
+  .order-product-price{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:var(--bordeaux);white-space:nowrap;margin-left:.8rem;}
+  .order-field{margin-bottom:1.1rem;}
+  .order-field label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#7a6f5d;margin-bottom:.4rem;}
+  .order-field input{
+    width:100%;padding:.75rem .9rem;border:1px solid #C9BBA5;background:#fff;
+    font-family:'Jost',sans-serif;font-size:.92rem;color:var(--noir-2);
+  }
+  .order-field input:focus{outline:2px solid var(--or);outline-offset:1px;}
+  .cod-note{
+    display:flex;align-items:center;gap:.6rem;background:#EFE9DC;border:1px dashed var(--or);
+    padding:.8rem 1rem;margin-bottom:1.3rem;font-size:.82rem;color:var(--noir-2);
+  }
+  .cod-note::before{content:'💵';font-size:1.1rem;}
+  .order-submit{
+    width:100%;text-align:center;padding:.95rem;font-size:.72rem;
+    border:none;background:var(--noir);color:var(--or);text-transform:uppercase;letter-spacing:.15em;cursor:pointer;
+  }
+  .order-thanks{text-align:center;padding:1rem 0 .5rem;}
+  .order-thanks .check{
+    width:56px;height:56px;border-radius:50%;background:var(--sauge);color:#fff;
+    display:flex;align-items:center;justify-content:center;margin:0 auto 1.2rem;font-size:1.6rem;
+  }
+  .order-thanks h3{font-size:1.4rem;margin-bottom:.7rem;}
+  .order-thanks p{color:#5b5041;line-height:1.7;font-size:.92rem;margin-bottom:.4rem;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="logo">H&amp;H <span>PARFUMERIE</span></a>
+  <a href="index.html" class="back-link">← Retour à la boutique</a>
+</nav>
+
+<div id="productWrap" class="hidden">
+  <div class="product-gallery">
+    <div class="product-photo" id="productPhoto">
+      <!-- images injectées par JS -->
+      <div class="product-dots" id="productDots"></div>
+    </div>
+  </div>
+  <div class="product-info">
+    <span class="eyebrow" id="productLabel"></span>
+    <h1 id="productName"></h1>
+    <p class="notes" id="productNotes"></p>
+    <div class="price-block" id="priceBlock"></div>
+    <button id="buyBtn" type="button">Acheter maintenant</button>
+  </div>
+</div>
+
+<div class="empty-state hidden" id="emptyState">
+  <h2>Aucun produit sélectionné</h2>
+  <p>Cette page s'ouvre en cliquant sur un parfum depuis la boutique. Retourne à la collection pour découvrir nos essences.</p>
+  <a href="index.html">Voir la collection</a>
+</div>
+
+<div class="order-overlay" id="orderOverlay"></div>
+<div class="order-modal" id="orderModal" aria-hidden="true">
+  <div class="order-header">
+    <h3>Finaliser la commande</h3>
+    <button class="order-close" id="orderClose" aria-label="Fermer">&times;</button>
+  </div>
+  <div class="order-body">
+    <div id="orderFormView">
+      <div class="order-product">
+        <span class="order-product-name" id="orderProductName">—</span>
+        <span class="order-product-price" id="orderProductPrice">—</span>
+      </div>
+      <form id="orderForm">
+        <div class="order-field">
+          <label for="orderFullname">Nom complet</label>
+          <input type="text" id="orderFullname" name="fullname" required autocomplete="name">
+        </div>
+        <div class="order-field">
+          <label for="orderPhone">Numéro de téléphone</label>
+          <input type="tel" id="orderPhone" name="phone" required autocomplete="tel">
+        </div>
+        <div class="order-field">
+          <label for="orderCity">Ville</label>
+          <input type="text" id="orderCity" name="city" required autocomplete="address-level2">
+        </div>
+        <div class="cod-note">Paiement à la livraison disponible — payez en espèces à la réception de votre commande.</div>
+        <button type="submit" class="order-submit">Confirmer la commande</button>
+      </form>
+    </div>
+    <div id="orderThanksView" class="order-thanks hidden">
+      <div class="check">✓</div>
+      <h3>Merci, <span id="orderThanksName"></span> !</h3>
+      <p>Merci de nous avoir fait confiance.</p>
+      <p>Nous allons vous contacter très bientôt pour confirmer votre commande.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(async function () {
+  const productWrap = document.getElementById('productWrap');
+  const emptyState = document.getElementById('emptyState');
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedId = urlParams.get('id');
+
+  let product = null;
+
+  if (requestedId) {
+    // Lien partageable : on va chercher le produit par id dans les deux
+    // sources de données (liste fixe + produits ajoutés dynamiquement).
+    try {
+      const [staticRes, dynamicRes] = await Promise.allSettled([
+        fetch('/data/static-products.json', { cache: 'no-store' }),
+        fetch('/data/products.json', { cache: 'no-store' }),
+      ]);
+      let all = [];
+      if (staticRes.status === 'fulfilled' && staticRes.value.ok) {
+        const list = await staticRes.value.json();
+        if (Array.isArray(list)) all = all.concat(list);
+      }
+      if (dynamicRes.status === 'fulfilled' && dynamicRes.value.ok) {
+        const list = await dynamicRes.value.json();
+        if (Array.isArray(list)) all = all.concat(list);
+      }
+      product = all.find((p) => p.id === requestedId) || null;
+    } catch (e) {
+      console.warn('[produit] Erreur chargement produit par id', e);
+    }
+  }
+
+  // Repli : navigation depuis index.html dans la même session (pas d'id
+  // dans l'URL, ou produit non trouvé par id).
+  if (!product) {
+    try {
+      product = JSON.parse(sessionStorage.getItem('selectedProduct') || 'null');
+    } catch (e) {
+      product = null;
+    }
+  }
+
+  if (!product) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+
+  // URL propre et partageable une fois le produit résolu.
+  if (product.id && requestedId !== product.id) {
+    const cleanUrl = window.location.pathname + '?id=' + encodeURIComponent(product.id);
+    window.history.replaceState({}, '', cleanUrl);
+  }
+
+  productWrap.classList.remove('hidden');
+
+  document.title = `${product.name} — H&H PARFUMERIE`;
+  document.getElementById('productLabel').textContent = product.label || '';
+  document.getElementById('productName').textContent = product.name || '';
+  document.getElementById('productNotes').textContent = product.notes || '';
+
+  // ---- Prix ----
+  const priceBlock = document.getElementById('priceBlock');
+  let priceHtml = '';
+  if (product.oldPrice) {
+    priceHtml += `<span class="old-price">${product.oldPrice}</span><span class="price">${product.price}</span>`;
+  } else {
+    priceHtml += `<span class="price">${product.price}</span>`;
+  }
+  if (product.promo) {
+    priceHtml += `<div class="promo">${product.promo}</div>`;
+  }
+  priceBlock.innerHTML = priceHtml;
+
+  // ---- Galerie photo ----
+  const photos = Array.isArray(product.photos) && product.photos.length ? product.photos : [];
+  const photoWrap = document.getElementById('productPhoto');
+  const dotsWrap = document.getElementById('productDots');
+
+  if (photos.length) {
+    photos.forEach((src, i) => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = product.name;
+      if (i === 0) img.classList.add('active');
+      photoWrap.insertBefore(img, dotsWrap);
+    });
+    if (photos.length > 1) {
+      let idx = 0;
+      const imgs = photoWrap.querySelectorAll('img');
+      photos.forEach((_, i) => {
+        const dot = document.createElement('span');
+        if (i === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => {
+          imgs[idx].classList.remove('active');
+          dotsWrap.children[idx].classList.remove('active');
+          idx = i;
+          imgs[idx].classList.add('active');
+          dotsWrap.children[idx].classList.add('active');
+        });
+        dotsWrap.appendChild(dot);
+      });
+    }
+  }
+
+  // ---- Bouton Acheter maintenant → modal (même comportement que index.html) ----
+  const orderOverlay = document.getElementById('orderOverlay');
+  const orderModal = document.getElementById('orderModal');
+  const orderClose = document.getElementById('orderClose');
+  const orderFormView = document.getElementById('orderFormView');
+  const orderThanksView = document.getElementById('orderThanksView');
+  const orderForm = document.getElementById('orderForm');
+  const orderProductName = document.getElementById('orderProductName');
+  const orderProductPrice = document.getElementById('orderProductPrice');
+  const orderThanksName = document.getElementById('orderThanksName');
+
+  function openOrderModal() {
+    orderProductName.textContent = product.name;
+    orderProductPrice.textContent = product.price;
+    orderFormView.classList.remove('hidden');
+    orderThanksView.classList.add('hidden');
+    orderForm.reset();
+    orderOverlay.classList.add('open');
+    orderModal.classList.add('open');
+    orderModal.setAttribute('aria-hidden', 'false');
+  }
+  function closeOrderModal() {
+    orderOverlay.classList.remove('open');
+    orderModal.classList.remove('open');
+    orderModal.setAttribute('aria-hidden', 'true');
+  }
+  document.getElementById('buyBtn').addEventListener('click', openOrderModal);
+  orderClose.addEventListener('click', closeOrderModal);
+  orderOverlay.addEventListener('click', closeOrderModal);
+
+  orderForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(orderForm);
+    orderThanksName.textContent = fd.get('fullname') || '';
+    orderFormView.classList.add('hidden');
+    orderThanksView.classList.remove('hidden');
+  });
+})();
+</script>
+
+</body>
+</html>
