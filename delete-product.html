@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H&amp;H PARFUMERIE — Supprimer un produit</title>
+<style>
+  :root{
+    --noir:#171717; --or:#C9A15F; --ivoire:#F3EAE0; --bordeaux:#6B1E2E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+    background:var(--ivoire); color:var(--noir);
+    margin:0; padding:2.5rem 1.5rem 4rem;
+  }
+  h1{font-size:1.5rem; margin-bottom:.3rem;}
+  .subtitle{color:#7a6f5d; margin-bottom:2rem; font-size:.92rem;}
+
+  #wrap{max-width:720px; margin:0 auto;}
+
+  #status{margin-bottom:1.2rem; font-size:.9rem; padding:.8rem 1rem; border-radius:4px;}
+  #status.loading{background:#EFE9DC; color:#5b5041;}
+  #status.error{background:#F6E1DE; color:#8a2a1f;}
+  #status.hidden{display:none;}
+
+  .product-row{
+    display:flex; align-items:center; gap:1rem;
+    background:#fff; border:1px solid #E6DCC8; border-radius:6px;
+    padding:.9rem 1.1rem; margin-bottom:.8rem;
+  }
+  .product-row img{
+    width:56px; height:70px; object-fit:cover; border-radius:2px; background:#0d0a07; flex-shrink:0;
+  }
+  .product-row .info{flex:1; min-width:0;}
+  .product-row .name{font-weight:600; font-size:.95rem; margin-bottom:.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .product-row .meta{font-size:.78rem; color:#7a6f5d;}
+  .product-row .price{font-size:.85rem; color:var(--bordeaux); margin-top:.2rem;}
+
+  .delete-btn{
+    flex-shrink:0; padding:.6rem 1rem; border:1px solid var(--bordeaux); background:none;
+    color:var(--bordeaux); font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;
+    border-radius:4px; cursor:pointer; transition:all .2s;
+  }
+  .delete-btn:hover{background:var(--bordeaux); color:#fff;}
+  .delete-btn:disabled{opacity:.5; cursor:not-allowed;}
+  .delete-btn.confirming{background:var(--bordeaux); color:#fff;}
+
+  .empty{text-align:center; color:#9a8f7a; padding:3rem 1rem; font-size:.92rem;}
+  .removed{opacity:.35; pointer-events:none;}
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <h1>Supprimer un produit</h1>
+  <p class="subtitle">Clique une fois sur "Supprimer" pour confirmer, puis une seconde fois pour valider.</p>
+
+  <p id="status" class="loading">Chargement des produits…</p>
+
+  <div id="productList"></div>
+</div>
+
+<script>
+(async function () {
+  const statusEl = document.getElementById('status');
+  const listEl = document.getElementById('productList');
+
+  function setStatus(message, kind) {
+    if (!message) {
+      statusEl.classList.add('hidden');
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.className = kind || '';
+  }
+
+  let products = [];
+  try {
+    const [staticRes, dynamicRes] = await Promise.allSettled([
+      fetch('/data/static-products.json', { cache: 'no-store' }),
+      fetch('/data/products.json', { cache: 'no-store' }),
+    ]);
+    if (staticRes.status === 'fulfilled' && staticRes.value.ok) {
+      const list = await staticRes.value.json();
+      if (Array.isArray(list)) products = products.concat(list);
+    }
+    if (dynamicRes.status === 'fulfilled' && dynamicRes.value.ok) {
+      const list = await dynamicRes.value.json();
+      if (Array.isArray(list)) products = products.concat(list);
+    }
+  } catch (e) {
+    console.error('[delete-product] Erreur chargement produits', e);
+  }
+
+  if (!products.length) {
+    setStatus('');
+    listEl.innerHTML = '<p class="empty">Aucun produit trouvé.</p>';
+    return;
+  }
+
+  setStatus('');
+
+  products.forEach((p) => {
+    const row = document.createElement('div');
+    row.className = 'product-row';
+    row.dataset.id = p.id || '';
+
+    const photo = Array.isArray(p.photos) && p.photos.length ? p.photos[0] : '';
+
+    row.innerHTML = `
+      ${photo ? `<img src="${photo}" alt="${p.name || ''}">` : ''}
+      <div class="info">
+        <div class="name">${p.name || '(sans nom)'}</div>
+        <div class="meta">${p.label || ''}</div>
+        <div class="price">${p.price || ''}</div>
+      </div>
+      <button class="delete-btn" type="button" data-id="${p.id || ''}">Supprimer</button>
+    `;
+    listEl.appendChild(row);
+  });
+
+  listEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.delete-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) {
+      alert('Ce produit n\'a pas d\'identifiant, impossible de le supprimer automatiquement.');
+      return;
+    }
+
+    if (!btn.classList.contains('confirming')) {
+      btn.classList.add('confirming');
+      btn.textContent = 'Confirmer ?';
+      setTimeout(() => {
+        if (btn.classList.contains('confirming')) {
+          btn.classList.remove('confirming');
+          btn.textContent = 'Supprimer';
+        }
+      }, 3500);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Suppression…';
+    setStatus('Suppression en cours…', 'loading');
+
+    try {
+      const res = await fetch('/.netlify/functions/delete-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`);
+      }
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+      }
+      const row = btn.closest('.product-row');
+      row.classList.add('removed');
+      setStatus(data.message || 'Produit supprimé.', '');
+    } catch (err) {
+      console.error('[delete-product] Erreur:', err);
+      setStatus('Échec : ' + err.message, 'error');
+      btn.disabled = false;
+      btn.classList.remove('confirming');
+      btn.textContent = 'Supprimer';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
