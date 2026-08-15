@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H&amp;H PARFUMERIE — Commandes</title>
+<style>
+  :root{
+    --noir:#171717; --or:#C9A15F; --ivoire:#F3EAE0; --bordeaux:#6B1E2E; --sauge:#7C8863;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+    background:var(--ivoire); color:var(--noir);
+    margin:0; padding:2.5rem 1.5rem 4rem;
+  }
+  h1{font-size:1.5rem; margin-bottom:.3rem;}
+  .subtitle{color:#7a6f5d; margin-bottom:2rem; font-size:.92rem;}
+
+  #wrap{max-width:760px; margin:0 auto;}
+
+  #status{margin-bottom:1.2rem; font-size:.9rem; padding:.8rem 1rem; border-radius:4px;}
+  #status.loading{background:#EFE9DC; color:#5b5041;}
+  #status.error{background:#F6E1DE; color:#8a2a1f;}
+  #status.hidden{display:none;}
+
+  .order-card{
+    background:#fff; border:1px solid #E6DCC8; border-left:4px solid var(--or);
+    border-radius:6px; padding:1.1rem 1.3rem; margin-bottom:1rem;
+  }
+  .order-top{display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:.8rem;}
+  .order-product{font-weight:600; font-size:1rem;}
+  .order-date{font-size:.72rem; color:#9a8f7a; white-space:nowrap;}
+  .order-details{display:grid; grid-template-columns:1fr 1fr; gap:.5rem 1.2rem; font-size:.88rem; margin-bottom:.9rem;}
+  .order-details .label{font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:#9a8f7a; display:block;}
+  .order-details a{color:var(--bordeaux);}
+  .order-actions{display:flex; justify-content:flex-end;}
+
+  .done-btn{
+    padding:.55rem 1rem; border:1px solid var(--sauge); background:none;
+    color:var(--sauge); font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+    border-radius:4px; cursor:pointer; transition:all .2s;
+  }
+  .done-btn:hover{background:var(--sauge); color:#fff;}
+  .done-btn:disabled{opacity:.5; cursor:not-allowed;}
+  .done-btn.confirming{background:var(--sauge); color:#fff;}
+
+  .empty{text-align:center; color:#9a8f7a; padding:3rem 1rem; font-size:.92rem;}
+  .removed{opacity:.35; pointer-events:none;}
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <h1>Commandes reçues</h1>
+  <p class="subtitle">Les plus récentes en premier. Clique "Traitée" deux fois pour retirer une commande une fois contactée.</p>
+
+  <p id="status" class="loading">Chargement des commandes…</p>
+
+  <div id="orderList"></div>
+</div>
+
+<script>
+(async function () {
+  const statusEl = document.getElementById('status');
+  const listEl = document.getElementById('orderList');
+
+  function setStatus(message, kind) {
+    if (!message) { statusEl.classList.add('hidden'); return; }
+    statusEl.textContent = message;
+    statusEl.className = kind || '';
+  }
+
+  function formatDate(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return iso || '';
+    }
+  }
+
+  let orders = [];
+  try {
+    const res = await fetch('/data/orders.json', { cache: 'no-store' });
+    if (res.ok) {
+      const list = await res.json();
+      if (Array.isArray(list)) orders = list;
+    }
+  } catch (e) {
+    console.error('[orders] Erreur chargement commandes', e);
+  }
+
+  if (!orders.length) {
+    setStatus('');
+    listEl.innerHTML = '<p class="empty">Aucune commande pour le moment.</p>';
+    return;
+  }
+
+  setStatus('');
+
+  orders.forEach((o) => {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.dataset.id = o.id || '';
+    card.innerHTML = `
+      <div class="order-top">
+        <span class="order-product">${o.productName || 'Produit'} ${o.quantity && o.quantity > 1 ? `× ${o.quantity}` : ''}</span>
+        <span class="order-date">${formatDate(o.createdAt)}</span>
+      </div>
+      <div class="order-details">
+        <div><span class="label">Nom</span>${o.fullname || ''}</div>
+        <div><span class="label">Téléphone</span><a href="tel:${o.phone || ''}">${o.phone || ''}</a></div>
+        <div><span class="label">Ville</span>${o.city || ''}</div>
+        <div><span class="label">Prix</span>${o.productPrice || ''}</div>
+      </div>
+      <div class="order-actions">
+        <button class="done-btn" type="button" data-id="${o.id || ''}">Traitée</button>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
+
+  listEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.done-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+
+    if (!btn.classList.contains('confirming')) {
+      btn.classList.add('confirming');
+      btn.textContent = 'Confirmer ?';
+      setTimeout(() => {
+        if (btn.classList.contains('confirming')) {
+          btn.classList.remove('confirming');
+          btn.textContent = 'Traitée';
+        }
+      }, 3500);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '…';
+
+    try {
+      const res = await fetch('/.netlify/functions/delete-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur (HTTP ${res.status})`);
+      btn.closest('.order-card').classList.add('removed');
+    } catch (err) {
+      console.error('[orders] Erreur suppression', err);
+      setStatus('Échec : ' + err.message, 'error');
+      btn.disabled = false;
+      btn.classList.remove('confirming');
+      btn.textContent = 'Traitée';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

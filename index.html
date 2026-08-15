@@ -1375,14 +1375,18 @@
   const orderProductPrice = document.getElementById('orderProductPrice');
   const orderThanksName = document.getElementById('orderThanksName');
   const orderProductInput = document.getElementById('orderProductInput');
+  let currentOrderPriceRaw = '';
 
   function openOrderModal(name, price){
     orderProductName.textContent = name;
     orderProductPrice.textContent = price + ' MAD';
     orderProductInput.value = name;
+    currentOrderPriceRaw = price + ' MAD';
     orderFormView.classList.remove('hidden');
     orderThanksView.classList.add('hidden');
     orderForm.reset();
+    const errEl = orderForm.querySelector('.order-error');
+    if (errEl) errEl.remove();
     orderOverlay.classList.add('open');
     orderModal.classList.add('open');
     orderModal.setAttribute('aria-hidden', 'false');
@@ -1395,12 +1399,51 @@
   orderClose.addEventListener('click', closeOrderModal);
   orderOverlay.addEventListener('click', closeOrderModal);
 
-  orderForm.addEventListener('submit', (e) => {
+  orderForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(orderForm);
-    orderThanksName.textContent = fd.get('fullname') || '';
-    orderFormView.classList.add('hidden');
-    orderThanksView.classList.remove('hidden');
+    const submitBtn = orderForm.querySelector('.order-submit');
+    const existingErr = orderForm.querySelector('.order-error');
+    if (existingErr) existingErr.remove();
+
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = 'Envoi en cours…';
+
+    try {
+      const res = await fetch('/.netlify/functions/submit-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: fd.get('product') || orderProductInput.value,
+          productPrice: currentOrderPriceRaw,
+          quantity: 1,
+          fullname: fd.get('fullname'),
+          phone: fd.get('phone'),
+          city: fd.get('city'),
+        }),
+      });
+      let data;
+      try { data = await res.json(); } catch (parseErr) {
+        throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`);
+      }
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+      }
+      orderThanksName.textContent = fd.get('fullname') || '';
+      orderFormView.classList.add('hidden');
+      orderThanksView.classList.remove('hidden');
+    } catch (err) {
+      console.error('[index] Échec envoi commande', err);
+      const errEl = document.createElement('p');
+      errEl.className = 'order-error';
+      errEl.style.cssText = 'color:#8a2a1f;font-size:.82rem;margin-top:-.6rem;margin-bottom:1rem;';
+      errEl.textContent = 'Échec de l\'envoi : ' + err.message + ' — réessaie, ou contacte-nous directement.';
+      submitBtn.parentElement.insertBefore(errEl, submitBtn);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   });
 </script>
 

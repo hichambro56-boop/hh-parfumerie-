@@ -394,13 +394,52 @@
   const orderForm = document.getElementById('orderForm');
   const orderThanksName = document.getElementById('orderThanksName');
 
-  orderForm.addEventListener('submit', (e) => {
+  orderForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(orderForm);
-    orderThanksName.textContent = fd.get('fullname') || '';
-    orderFormView.classList.add('hidden');
-    orderThanksView.classList.remove('hidden');
-    if (autoAdvanceTimer) clearInterval(autoAdvanceTimer);
+    const submitBtn = orderForm.querySelector('.order-submit');
+    const existingErr = orderForm.querySelector('.order-error');
+    if (existingErr) existingErr.remove();
+
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = 'Envoi en cours…';
+
+    try {
+      const res = await fetch('/.netlify/functions/submit-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: product.name,
+          productPrice: product.price,
+          quantity: qty,
+          fullname: fd.get('fullname'),
+          phone: fd.get('phone'),
+          city: fd.get('city'),
+        }),
+      });
+      let data;
+      try { data = await res.json(); } catch (parseErr) {
+        throw new Error(`Réponse illisible du serveur (HTTP ${res.status}).`);
+      }
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+      }
+      orderThanksName.textContent = fd.get('fullname') || '';
+      orderFormView.classList.add('hidden');
+      orderThanksView.classList.remove('hidden');
+      if (autoAdvanceTimer) clearInterval(autoAdvanceTimer);
+    } catch (err) {
+      console.error('[produit] Échec envoi commande', err);
+      const errEl = document.createElement('p');
+      errEl.className = 'order-error';
+      errEl.style.cssText = 'color:#8a2a1f;font-size:.82rem;margin-top:-.6rem;margin-bottom:1rem;';
+      errEl.textContent = 'Échec de l\'envoi : ' + err.message + ' — réessaie, ou contacte-nous directement.';
+      submitBtn.parentElement.insertBefore(errEl, submitBtn);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   });
 })();
 </script>
