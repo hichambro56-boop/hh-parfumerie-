@@ -117,33 +117,24 @@
 
   .hidden{display:none !important;}
 
-  /* ===== Order modal (identique à index.html) ===== */
-  .order-overlay{
-    position:fixed;inset:0;background:rgba(22,17,13,.55);
-    opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:900;
+  /* ===== Commande — intégrée directement sous le produit ===== */
+  .order-section{
+    margin-top:2.2rem;padding-top:2rem;border-top:1px solid #E6DCC8;
   }
-  .order-overlay.open{opacity:1;pointer-events:auto;}
-  .order-modal{
-    position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);
-    width:min(92vw,420px);max-height:88vh;overflow-y:auto;
-    background:var(--ivoire);box-shadow:0 25px 60px rgba(0,0,0,.35);
-    z-index:901;opacity:0;pointer-events:none;
-    transition:opacity .35s ease, transform .35s ease;border-radius:3px;
+  .order-section h2{font-size:1.15rem;margin-bottom:1.2rem;}
+  .qty-field{margin-bottom:1.1rem;}
+  .qty-field label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#7a6f5d;margin-bottom:.5rem;}
+  .qty-stepper{display:flex;align-items:stretch;width:fit-content;border:1px solid #C9BBA5;}
+  .qty-stepper button{
+    width:42px;background:#fff;border:none;font-size:1.05rem;color:var(--noir-2);
+    cursor:pointer;transition:background .2s;
   }
-  .order-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%);}
-  .order-header{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:1.3rem 1.5rem;border-bottom:1px solid #E6DCC8;
+  .qty-stepper button:hover{background:#F3EAE0;}
+  .qty-stepper input{
+    width:52px;border:none;border-left:1px solid #C9BBA5;border-right:1px solid #C9BBA5;
+    text-align:center;font-family:'Jost',sans-serif;font-size:.95rem;color:var(--noir-2);background:#fff;
   }
-  .order-header h3{font-size:1.2rem;}
-  .order-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--noir-2);line-height:1;}
-  .order-body{padding:1.4rem 1.6rem 1.7rem;}
-  .order-product{
-    display:flex;justify-content:space-between;align-items:baseline;
-    background:#F3EAE0;padding:.9rem 1.1rem;margin-bottom:1.3rem;border-left:3px solid var(--or);
-  }
-  .order-product-name{font-size:.88rem;color:var(--noir-2);}
-  .order-product-price{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:var(--bordeaux);white-space:nowrap;margin-left:.8rem;}
+  .qty-total{font-size:.85rem;color:var(--bordeaux);margin-top:.6rem;}
   .order-field{margin-bottom:1.1rem;}
   .order-field label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#7a6f5d;margin-bottom:.4rem;}
   .order-field input{
@@ -157,9 +148,11 @@
   }
   .cod-note::before{content:'💵';font-size:1.1rem;}
   .order-submit{
-    width:100%;text-align:center;padding:.95rem;font-size:.72rem;
-    border:none;background:var(--noir);color:var(--or);text-transform:uppercase;letter-spacing:.15em;cursor:pointer;
+    width:100%;text-align:center;padding:1rem;font-size:.78rem;
+    border:none;background:var(--noir);color:var(--or);text-transform:uppercase;letter-spacing:.15em;
+    font-weight:600;cursor:pointer;transition:opacity .2s;
   }
+  .order-submit:hover{opacity:.88;}
   .order-thanks{text-align:center;padding:1rem 0 .5rem;}
   .order-thanks .check{
     width:56px;height:56px;border-radius:50%;background:var(--sauge);color:#fff;
@@ -188,7 +181,46 @@
     <h1 id="productName"></h1>
     <p class="notes" id="productNotes"></p>
     <div class="price-block" id="priceBlock"></div>
-    <button id="buyBtn" type="button">Acheter maintenant</button>
+
+    <div class="order-section">
+      <div id="orderFormView">
+        <h2>Passer commande</h2>
+
+        <div class="qty-field">
+          <label>Combien de flacons souhaitez-vous ?</label>
+          <div class="qty-stepper">
+            <button type="button" id="qtyMinus" aria-label="Diminuer">−</button>
+            <input type="text" id="qtyInput" value="1" readonly inputmode="numeric">
+            <button type="button" id="qtyPlus" aria-label="Augmenter">+</button>
+          </div>
+          <p class="qty-total" id="qtyTotal"></p>
+        </div>
+
+        <form id="orderForm">
+          <div class="order-field">
+            <label for="orderFullname">Nom complet</label>
+            <input type="text" id="orderFullname" name="fullname" required autocomplete="name">
+          </div>
+          <div class="order-field">
+            <label for="orderPhone">Numéro de téléphone</label>
+            <input type="tel" id="orderPhone" name="phone" required autocomplete="tel">
+          </div>
+          <div class="order-field">
+            <label for="orderCity">Ville</label>
+            <input type="text" id="orderCity" name="city" required autocomplete="address-level2">
+          </div>
+          <div class="cod-note">Paiement à la livraison disponible — payez en espèces à la réception de votre commande.</div>
+          <button type="submit" class="order-submit">Confirmer la commande</button>
+        </form>
+      </div>
+
+      <div id="orderThanksView" class="order-thanks hidden">
+        <div class="check">✓</div>
+        <h3>Merci, <span id="orderThanksName"></span> !</h3>
+        <p>Merci de nous avoir fait confiance.</p>
+        <p>Nous allons vous contacter très bientôt pour confirmer votre commande.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -196,44 +228,6 @@
   <h2>Aucun produit sélectionné</h2>
   <p>Cette page s'ouvre en cliquant sur un parfum depuis la boutique. Retourne à la collection pour découvrir nos essences.</p>
   <a href="index.html">Voir la collection</a>
-</div>
-
-<div class="order-overlay" id="orderOverlay"></div>
-<div class="order-modal" id="orderModal" aria-hidden="true">
-  <div class="order-header">
-    <h3>Finaliser la commande</h3>
-    <button class="order-close" id="orderClose" aria-label="Fermer">&times;</button>
-  </div>
-  <div class="order-body">
-    <div id="orderFormView">
-      <div class="order-product">
-        <span class="order-product-name" id="orderProductName">—</span>
-        <span class="order-product-price" id="orderProductPrice">—</span>
-      </div>
-      <form id="orderForm">
-        <div class="order-field">
-          <label for="orderFullname">Nom complet</label>
-          <input type="text" id="orderFullname" name="fullname" required autocomplete="name">
-        </div>
-        <div class="order-field">
-          <label for="orderPhone">Numéro de téléphone</label>
-          <input type="tel" id="orderPhone" name="phone" required autocomplete="tel">
-        </div>
-        <div class="order-field">
-          <label for="orderCity">Ville</label>
-          <input type="text" id="orderCity" name="city" required autocomplete="address-level2">
-        </div>
-        <div class="cod-note">Paiement à la livraison disponible — payez en espèces à la réception de votre commande.</div>
-        <button type="submit" class="order-submit">Confirmer la commande</button>
-      </form>
-    </div>
-    <div id="orderThanksView" class="order-thanks hidden">
-      <div class="check">✓</div>
-      <h3>Merci, <span id="orderThanksName"></span> !</h3>
-      <p>Merci de nous avoir fait confiance.</p>
-      <p>Nous allons vous contacter très bientôt pour confirmer votre commande.</p>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -310,10 +304,16 @@
   }
   priceBlock.innerHTML = priceHtml;
 
-  // ---- Galerie photo ----
+  // Extrait le premier nombre trouvé dans le prix (ex. "299 MAD" → 299)
+  // pour pouvoir calculer un total indicatif selon la quantité.
+  const priceNumber = parseInt(String(product.price || '').replace(/[^\d]/g, ''), 10) || null;
+
+  // ---- Galerie photo (avec défilement automatique) ----
   const photos = Array.isArray(product.photos) && product.photos.length ? product.photos : [];
   const photoWrap = document.getElementById('productPhoto');
   const dotsWrap = document.getElementById('productDots');
+  const AUTO_ADVANCE_MS = 3200;
+  let autoAdvanceTimer = null;
 
   if (photos.length) {
     photos.forEach((src, i) => {
@@ -323,53 +323,76 @@
       if (i === 0) img.classList.add('active');
       photoWrap.insertBefore(img, dotsWrap);
     });
+
     if (photos.length > 1) {
       let idx = 0;
       const imgs = photoWrap.querySelectorAll('img');
+
       photos.forEach((_, i) => {
         const dot = document.createElement('span');
         if (i === 0) dot.classList.add('active');
         dot.addEventListener('click', () => {
-          imgs[idx].classList.remove('active');
-          dotsWrap.children[idx].classList.remove('active');
-          idx = i;
-          imgs[idx].classList.add('active');
-          dotsWrap.children[idx].classList.add('active');
+          goToSlide(i);
+          restartAutoAdvance();
         });
         dotsWrap.appendChild(dot);
+      });
+
+      function goToSlide(newIdx) {
+        imgs[idx].classList.remove('active');
+        dotsWrap.children[idx].classList.remove('active');
+        idx = newIdx;
+        imgs[idx].classList.add('active');
+        dotsWrap.children[idx].classList.add('active');
+      }
+
+      function startAutoAdvance() {
+        autoAdvanceTimer = setInterval(() => {
+          goToSlide((idx + 1) % imgs.length);
+        }, AUTO_ADVANCE_MS);
+      }
+      function restartAutoAdvance() {
+        if (autoAdvanceTimer) clearInterval(autoAdvanceTimer);
+        startAutoAdvance();
+      }
+
+      startAutoAdvance();
+      // Pause douce quand l'onglet n'est pas visible (économie de ressources).
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          if (autoAdvanceTimer) clearInterval(autoAdvanceTimer);
+        } else {
+          restartAutoAdvance();
+        }
       });
     }
   }
 
-  // ---- Bouton Acheter maintenant → modal (même comportement que index.html) ----
-  const orderOverlay = document.getElementById('orderOverlay');
-  const orderModal = document.getElementById('orderModal');
-  const orderClose = document.getElementById('orderClose');
+  // ---- Quantité + formulaire de commande (intégré sous le produit) ----
+  const qtyInput = document.getElementById('qtyInput');
+  const qtyMinus = document.getElementById('qtyMinus');
+  const qtyPlus = document.getElementById('qtyPlus');
+  const qtyTotal = document.getElementById('qtyTotal');
+  let qty = 1;
+
+  function updateQtyDisplay() {
+    qtyInput.value = qty;
+    if (priceNumber) {
+      qtyTotal.textContent = qty > 1 ? `Total indicatif : ${priceNumber * qty} MAD` : '';
+    }
+  }
+  qtyMinus.addEventListener('click', () => {
+    if (qty > 1) { qty--; updateQtyDisplay(); }
+  });
+  qtyPlus.addEventListener('click', () => {
+    qty++; updateQtyDisplay();
+  });
+  updateQtyDisplay();
+
   const orderFormView = document.getElementById('orderFormView');
   const orderThanksView = document.getElementById('orderThanksView');
   const orderForm = document.getElementById('orderForm');
-  const orderProductName = document.getElementById('orderProductName');
-  const orderProductPrice = document.getElementById('orderProductPrice');
   const orderThanksName = document.getElementById('orderThanksName');
-
-  function openOrderModal() {
-    orderProductName.textContent = product.name;
-    orderProductPrice.textContent = product.price;
-    orderFormView.classList.remove('hidden');
-    orderThanksView.classList.add('hidden');
-    orderForm.reset();
-    orderOverlay.classList.add('open');
-    orderModal.classList.add('open');
-    orderModal.setAttribute('aria-hidden', 'false');
-  }
-  function closeOrderModal() {
-    orderOverlay.classList.remove('open');
-    orderModal.classList.remove('open');
-    orderModal.setAttribute('aria-hidden', 'true');
-  }
-  document.getElementById('buyBtn').addEventListener('click', openOrderModal);
-  orderClose.addEventListener('click', closeOrderModal);
-  orderOverlay.addEventListener('click', closeOrderModal);
 
   orderForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -377,6 +400,7 @@
     orderThanksName.textContent = fd.get('fullname') || '';
     orderFormView.classList.add('hidden');
     orderThanksView.classList.remove('hidden');
+    if (autoAdvanceTimer) clearInterval(autoAdvanceTimer);
   });
 })();
 </script>
